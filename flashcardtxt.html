@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Lern-App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Marked.js für Markdown-Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Grundlegende Stildefinitionen */
+        :root {
+            --bg-color-light: #f8fafc;
+            --text-color-light: #334155;
+            --card-bg-light: #ffffff;
+            --card-border-light: #e2e8f0;
+            --primary-light: #8b5cf6; /* Pastell-Lila */
+            --primary-dark-light: #7c3aed;
+            --secondary-light: #ecfeff; /* Pastell-Blaugrün */
+            --correct-light: #4ade80; /* Pastell-Grün */
+            --incorrect-light: #ef4444; /* Pastell-Rot */
+            --button-bg-light: #ede9fe;
+            --button-text-light: #6d28d9;
+            --shadow-light: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dark Mode Variablen */
+        html.dark-mode {
+            --bg-color-light: #1a202c;
+            --text-color-light: #e2e8f0;
+            --card-bg-light: #2d3748;
+            --card-border-light: #4a5568;
+            --primary-light: #a78bfa; /* Pastell-Lila */
+            --primary-dark-light: #8b5cf6;
+            --secondary-light: #2a4365; /* Pastell-Blaugrün */
+            --correct-light: #68d391; /* Pastell-Grün */
+            --incorrect-light: #fc8181; /* Pastell-Rot */
+            --button-bg-light: #4c51bf;
+            --button-text-light: #e0e7ff;
+            --shadow-light: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color-light);
+            color: var(--text-color-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Start from top */
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+
+        h1 {
+            color: var(--primary-dark-light);
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2.5rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--card-bg-light);
+            border-radius: 15px;
+            box-shadow: 0 10px 20px var(--shadow-light);
+            padding: 25px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Dateiupload-Bereich */
+        .file-upload-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .file-upload-section input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-section label {
+            background-color: var(--primary-light);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            display: inline-block;
+            box-shadow: 0 4px 6px var(--shadow-light);
+        }
+
+        .file-upload-section label:hover {
+            background-color: var(--primary-dark-light);
+            transform: translateY(-2px);
+        }
+
+        #file-name-display {
+            margin-top: 10px;
+            font-style: italic;
+            color: var(--text-color-light);
+        }
+
+        /* Modusauswahl */
+        .mode-selection {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-selection button {
+            background-color: var(--button-bg-light);
+            color: var(--button-text-light);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px var(--shadow-light);
+        }
+
+        .mode-selection button:hover {
+            background-color: var(--primary-light);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .mode-selection button.active {
+            background-color: var(--primary-dark-light);
+            color: white;
+        }
+
+        /* Flashcard-Anzeige */
+        .flashcard-wrapper {
+            perspective: 1000px; /* Für 3D-Flip-Effekt */
+            width: 100%;
+            max-width: 500px; /* Maximale Breite für die Karte */
+            height: 250px; /* Feste Höhe für die Karte */
+            margin: 0 auto 30px auto;
+            position: relative;
+        }
+
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative; 
+            transform-style: preserve-3d;
+            cursor: pointer;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px var(--shadow-light);
+            background-color: var(--card-bg-light);
+            border: 1px solid var(--card-border-light);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow: hidden; 
+            white-space: normal;
+            transition: transform 0.6s; /* Nur der Eltern-Container transformiert */
+        }
+
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden; /* Die Rückseite des Elements ist beim Wegdrehen versteckt */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            font-size: 1.5rem;
+            font-weight: 600;
+            line-height: 1.4;
+            transition: transform 0.6s; /* Füge Übergang hinzu, falls die Gesichter direkt gedreht werden */
+        }
+
+        .flashcard-face.front {
+            transform: rotateY(0deg); /* Initialzustand */
+        }
+
+        .flashcard-face.back {
+            transform: rotateY(180deg); /* Initialzustand, umgedreht */
+        }
+
+        /* Wenn die Hauptkarte geflippt ist, drehen sich die Faces entsprechend */
+        .flashcard.flipped .flashcard-face.front {
+            transform: rotateY(180deg);
+        }
+
+        .flashcard.flipped .flashcard-face.back {
+            transform: rotateY(0deg);
+        }
+        
+        .flashcard-topic {
+            font-size: 0.9rem;
+            color: #64748b; /* Eine etwas dunklere Farbe für den Topic-Text */
+            margin-bottom: 10px;
+        }
+
+        #flashcard-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        #flashcard-answer {
+            font-size: 1.2rem; /* Leicht vergrößert für bessere Lesbarkeit */
+            font-weight: 400;
+        }
+        /* Markdown-Inhalt in Flashcards */
+        .flashcard-face h1, .flashcard-face h2, .flashcard-face h3 {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+            color: inherit; /* Verhindert, dass Markdown-Headings eine andere Farbe bekommen */
+        }
+        .flashcard-face p {
+            margin-bottom: 0.5em;
+        }
+        .flashcard-face ul, .flashcard-face ol {
+            text-align: left;
+            margin-left: 20px;
+        }
+
+        /* Quiz-Modus Optionen */
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Zwei Spalten */
+            gap: 10px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto 0 auto;
+        }
+
+        .quiz-options button {
+            background-color: var(--button-bg-light);
+            color: var(--button-text-light);
+            padding: 12px 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px var(--shadow-light);
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .quiz-options button:hover {
+            background-color: var(--primary-light);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .quiz-options button.correct {
+            background-color: var(--correct-light);
+            color: white;
+        }
+
+        .quiz-options button.incorrect {
+            background-color: var(--incorrect-light);
+            color: white;
+        }
+
+        /* Fortschrittsanzeige */
+        .progress-section {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: var(--card-border-light);
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-top: 10px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--primary-light); /* Default color, overwritten by gradient */
+            border-radius: 10px;
+            transition: width 0.5s ease-out, background-image 0.5s ease-out; /* Add transition for background-image */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Gamification & Buttons */
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .game-controls button {
+            background-color: var(--button-bg-light);
+            color: var(--button-text-light);
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px var(--shadow-light);
+            font-size: 1.1rem;
+        }
+
+        .game-controls button:hover {
+            background-color: var(--primary-light);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .game-controls button.correct-btn {
+            background-color: var(--correct-light);
+            color: white;
+        }
+
+        .game-controls button.correct-btn:hover {
+            background-color: #2e8b57; /* Dunkleres Grün */
+        }
+
+        .game-controls button.incorrect-btn {
+            background-color: var(--incorrect-light);
+            color: white;
+        }
+
+        .game-controls button.incorrect-btn:hover {
+            background-color: #b91c1c; /* Dunkleres Rot */
+        }
+
+        #card-counter {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* Motivations-Nachricht */
+        .motivation-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--primary-light);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-align: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            animation: fadeInOut 1s forwards; /* Verkürzt auf 1s */
+            white-space: nowrap; /* Verhindert Zeilenumbruch */
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; visibility: hidden; transform: translate(-50%, -50%) scale(0.8); }
+            10% { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+            90% { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; visibility: hidden; transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        /* Dark Mode Toggle */
+        .dark-mode-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--text-color-light);
+            transition: color 0.3s ease;
+        }
+
+        .dark-mode-toggle:hover {
+            color: var(--primary-dark-light);
+        }
+
+        /* Settings Button */
+        #settingsBtn {
+            position: absolute;
+            top: 20px;
+            right: 80px; /* Links neben dem Dark Mode Toggle */
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--text-color-light);
+            transition: color 0.3s ease;
+        }
+
+        #settingsBtn:hover {
+            color: var(--primary-dark-light);
+        }
+
+
+        /* Reset/Review Section */
+        .reset-review-section {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .reset-review-section button {
+            background-color: var(--button-bg-light);
+            color: var(--button-text-light);
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px var(--shadow-light);
+            font-size: 1.1rem;
+            margin: 5px;
+        }
+
+        .reset-review-section button:hover {
+            background-color: var(--primary-light);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Responsivität */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            .mode-selection {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .flashcard-wrapper {
+                height: 220px; /* Etwas kleiner auf Mobilgeräten */
+            }
+
+            .flashcard-face {
+                font-size: 1.3rem;
+            }
+
+            .flashcard-face.back {
+                font-size: 1rem;
+            }
+
+            .quiz-options {
+                grid-template-columns: 1fr; /* Eine Spalte im Quiz-Modus */
+            }
+
+            .game-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .dark-mode-toggle {
+                top: 10px;
+                right: 10px;
+                font-size: 1.5rem;
+            }
+            #settingsBtn {
+                top: 10px;
+                right: 60px; /* Anpassung für kleine Bildschirme */
+                font-size: 1.5rem;
+            }
+
+            .motivation-message {
+                font-size: 1.4rem;
+                padding: 15px 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .flashcard-wrapper {
+                height: 200px;
+            }
+
+            .flashcard-face {
+                font-size: 1.1rem;
+            }
+
+            .flashcard-face.back {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* --- Neue Stile für Maskottchen und Mini-Spiele --- */
+        .mascot-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            z-index: 999;
+            pointer-events: none; /* Macht das Maskottchen nicht klickbar */
+            transition: transform 0.5s ease-out;
+            font-size: 4rem; /* Emoji Größe */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mascot-container.correct-animation {
+            animation: mascotCorrect 0.8s ease-out forwards;
+        }
+
+        @keyframes mascotCorrect {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        .mascot-container.incorrect-animation {
+            animation: mascotIncorrect 0.8s ease-out forwards;
+        }
+
+        @keyframes mascotIncorrect {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* Abzeichen-Galerie */
+        #badgeGallery {
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            padding: 15px;
+        }
+
+        .badge-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            opacity: 0.4; /* Standardmäßig ausgegraut */
+            transition: opacity 0.3s ease-in-out;
+            background-color: var(--button-bg-light); /* Hintergrund für jedes Abzeichen */
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 2px 5px var(--shadow-light);
+        }
+
+        .badge-item.earned {
+            opacity: 1; /* Verdient = sichtbar */
+            background-color: var(--secondary-light); /* Leichter farbiger Hintergrund, wenn verdient */
+        }
+
+        .badge-item .badge-icon {
+            font-size: 3rem; /* Emoji Größe für Abzeichen-Icons */
+            margin-bottom: 5px;
+            line-height: 1; /* Vertikale Ausrichtung optimieren */
+        }
+
+        .badge-item span {
+            font-size: 0.9rem; /* Leicht größer */
+            font-weight: 600;
+            color: var(--text-color-light);
+            margin-bottom: 2px;
+        }
+        .badge-item small {
+            font-size: 0.75rem;
+            color: #64748b; /* Dunkler als Haupttext */
+        }
+
+        /* Overlay für Mini-Spiele und Einstellungen */
+        .overlay-container {
+            display: none; /* Standardmäßig ausgeblendet */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1001;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .overlay-content {
+            background-color: var(--card-bg-light);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            position: relative; /* Für den Schließen-Button */
+        }
+
+        .overlay-content h3 {
+            color: var(--primary-dark-light);
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .overlay-controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .overlay-controls button {
+            background-color: var(--primary-light);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        .overlay-controls button:hover {
+            background-color: var(--primary-dark-light);
+        }
+
+        .close-overlay-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: var(--text-color-light);
+            transition: color 0.3s ease;
+        }
+        .close-overlay-btn:hover {
+            color: var(--incorrect-light);
+        }
+
+        /* Settings specific styles */
+        #settingsContent p {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        #settingsContent select {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border-light);
+            background-color: var(--button-bg-light);
+            color: var(--button-text-light);
+            font-size: 1rem;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+        #settingsContent select:focus {
+            outline: none;
+            border-color: var(--primary-dark-light);
+        }
+
+        /* Memory Game spezifische Stile */
+        #memoryBoard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* Beispiel: 4 Spalten */
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        .memory-card {
+            width: 100px; 
+            height: 100px; 
+            background-color: var(--primary-light);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem; 
+            font-weight: 600;
+            color: white;
+            transform-style: preserve-3d;
+            transition: transform 0.6s ease-out; /* NUR der Eltern-Container transformiert */
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* WICHTIG: Gematchte Karten bleiben umgedreht und zeigen den Inhalt */
+        .memory-card.flipped, 
+        .memory-card.matched { 
+            transform: rotateY(180deg);
+        }
+
+        .memory-card.matched {
+            background-color: var(--correct-light);
+            cursor: default;
+            opacity: 1; /* Volle Deckkraft für gematchte Karten */
+            pointer-events: none; /* Nicht mehr klickbar, wenn gematcht */
+        }
+
+        .memory-card-face { /* Gemeinsame Stile für Vorder- und Rückseite */
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden; /* Versteckt die Rückseite, wenn sie weggedreht ist */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 5px;
+            box-sizing: border-box;
+            word-wrap: break-word;
+        }
+
+        .memory-card-front-face { /* Die Vorderseite der Karte, zeigt das '?' */
+            background-color: var(--primary-light);
+            color: white;
+            font-size: 1.2rem; 
+            font-weight: 600;
+            transform: rotateY(0deg); /* Initialzustand */
+        }
+
+        .memory-card-back-face { /* Die Rückseite der Karte, zeigt den Inhalt */
+            background-color: var(--card-bg-light);
+            color: var(--text-color-light);
+            font-size: 1.1rem; 
+            /* Wichtig: Initial um 180 Grad gedreht, damit sie nach dem "flip" sichtbar ist */
+            transform: rotateY(180deg); 
+        }
+
+        @media (max-width: 480px) {
+            #memoryBoard {
+                grid-template-columns: repeat(3, 1fr); /* 3 Spalten auf kleinen Geräten */
+                gap: 8px;
+            }
+            .memory-card {
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        /* Style for the audio buttons */
+        .audio-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--primary-dark-light);
+            margin-left: 10px;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+        .audio-button:hover {
+            background-color: rgba(139, 92, 246, 0.2); /* light purple with transparency */
+        }
+        /* Position audio buttons within flashcard faces */
+        .flashcard-face.front .audio-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .flashcard-face.back .audio-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <button id="darkModeToggle" class="dark-mode-toggle">💡</button>
+    <button id="settingsBtn" class="settings-button">⚙️</button>
+
+    <h1>Flashcard Lern-App</h1>
+
+    <div class="container">
+        <div class="file-upload-section">
+            <h2>1. Lerninhalte hochladen</h2>
+            <input type="file" id="fileInput" accept=".txt">
+            <label for="fileInput">Datei auswählen</label>
+            <div id="file-name-display">Noch keine Datei ausgewählt.</div>
+            <small>Format: Frage : Antwort (jede Zeile eine Karte)</small><br>
+            <small>Optional: Thema|Frage : Antwort</small>
+        </div>
+    </div>
+
+    <div class="container" id="app-controls" style="display: none;">
+        <h2>2. Lernmodus wählen</h2>
+        <div class="mode-selection">
+            <button id="normalModeBtn" class="active">Normalmodus</button>
+            <button id="quizModeBtn">Quizmodus</button>
+        </div>
+
+        <!-- Neue Sektion für Aktionsbuttons (Abzeichen, Mini-Spiel) -->
+        <div class="action-buttons">
+            <button id="showBadgesBtn">🏆 Abzeichen</button>
+            <button id="startGameBtn">🎮 Mini-Spiel starten</button>
+        </div>
+        
+        <div class="progress-section">
+            <h3>Fortschritt: <span id="progress-text">0%</span></h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <p id="card-counter">Bearbeitete Karten: 0 | Richtig: 0 | Falsch: 0</p>
+        </div>
+
+        <div class="flashcard-wrapper">
+            <div class="flashcard" id="flashcard">
+                <div class="flashcard-face front">
+                    <span id="flashcard-topic-front" class="flashcard-topic"></span>
+                    <span id="flashcard-text">Lade eine Datei hoch, um zu beginnen!</span>
+                    <button class="audio-button" id="playQuestionAudio">🔊</button>
+                </div>
+                <div class="flashcard-face back">
+                    <span id="flashcard-topic-back" class="flashcard-topic"></span>
+                    <span id="flashcard-answer">Antwort</span>
+                    <button class="audio-button" id="playAnswerAudio">🔊</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-options" id="quizOptions" style="display: none;">
+            <!-- Quiz-Antwortoptionen werden hier eingefügt -->
+        </div>
+
+        <div class="game-controls">
+            <button id="correctBtn" class="correct-btn">✅ Richtig gewusst</button>
+            <button id="incorrectBtn" class="incorrect-btn">❌ Falsch</button>
+            <button id="nextCardBtn">Nächste Karte</button>
+            <button id="prevCardBtn">Vorherige Karte</button>
+        </div>
+
+        <div class="reset-review-section">
+            <button id="reviewIncorrectBtn" style="display: none;">Falsch beantwortete Karten wiederholen</button>
+            <button id="resetProgressBtn">Fortschritt zurücksetzen</button>
+        </div>
+    </div>
+
+    <div id="motivationMessage" class="motivation-message"></div>
+
+    <!-- Maskottchen Container -->
+    <div class="mascot-container" id="mascotContainer">
+        <!-- Maskottchen Emoji wird hier dynamisch eingefügt -->
+        <span id="mascotEmoji"></span>
+    </div>
+
+    <!-- Abzeichen-Galerie Overlay -->
+    <div class="overlay-container" id="badgeGalleryOverlay">
+        <div class="overlay-content">
+            <button class="close-overlay-btn" id="closeBadgesBtn">✖</button>
+            <h3>Deine Abzeichen</h3>
+            <div id="badgeGallery">
+                <!-- Abzeichen werden hier dynamisch eingefügt -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini-Spiel Overlay -->
+    <div class="overlay-container" id="miniGameOverlay">
+        <div class="overlay-content">
+            <button class="close-overlay-btn" id="closeGameBtn">✖</button>
+            <h3 id="gameTitle">Mini-Spiel</h3>
+            <div id="gameArea">
+                <!-- Spielinhalte werden hier dynamisch geladen -->
+            </div>
+            <div class="overlay-controls">
+                <button id="nextGameBtn" style="display: none;">Nächstes Spiel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEU: Einstellungen Overlay -->
+    <div class="overlay-container" id="settingsOverlay">
+        <div class="overlay-content" id="settingsContent">
+            <button class="close-overlay-btn" id="closeSettingsBtn">✖</button>
+            <h3>Einstellungen</h3>
+            <p>Sprache für Frage: 
+                <select id="questionLangSelect">
+                    <!-- Optionen werden dynamisch per JavaScript eingefügt -->
+                </select>
+            </p>
+            <p>Sprache für Antwort:
+                <select id="answerLangSelect">
+                    <!-- Optionen werden dynamisch per JavaScript eingefügt -->
+                </select>
+            </p>
+            <p style="font-size: 0.8rem; color: #666;">
+                Verfügbare Sprachen hängen von Ihrem Browser und Betriebssystem ab.
+            </p>
+        </div>
+    </div>
+
+
+    <script>
+        // DOM-Elemente abrufen
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const appControls = document.getElementById('app-controls');
+        const flashcard = document.getElementById('flashcard');
+        const flashcardText = document.getElementById('flashcard-text');
+        const flashcardAnswer = document.getElementById('flashcard-answer');
+        const flashcardTopicFront = document.getElementById('flashcard-topic-front');
+        const flashcardTopicBack = document.getElementById('flashcard-topic-back');
+        const correctBtn = document.getElementById('correctBtn');
+        const incorrectBtn = document.getElementById('incorrectBtn');
+        const nextCardBtn = document.getElementById('nextCardBtn');
+        const prevCardBtn = document.getElementById('prevCardBtn');
+        const cardCounterDisplay = document.getElementById('card-counter');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progress-text');
+        const motivationMessage = document.getElementById('motivationMessage');
+        const normalModeBtn = document.getElementById('normalModeBtn');
+        const quizModeBtn = document.getElementById('quizModeBtn');
+        const quizOptionsContainer = document.getElementById('quizOptions');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const resetProgressBtn = document.getElementById('resetProgressBtn');
+        const reviewIncorrectBtn = document.getElementById('reviewIncorrectBtn');
+
+        // Audio-Elemente
+        const playQuestionAudioBtn = document.getElementById('playQuestionAudio');
+        const playAnswerAudioBtn = document.getElementById('playAnswerAudio');
+        const questionLangSelect = document.getElementById('questionLangSelect');
+        const answerLangSelect = document.getElementById('answerLangSelect');
+
+        // Gamification Elemente
+        const mascotContainer = document.getElementById('mascotContainer');
+        const mascotEmoji = document.getElementById('mascotEmoji');
+        const showBadgesBtn = document.getElementById('showBadgesBtn');
+        const badgeGalleryOverlay = document.getElementById('badgeGalleryOverlay');
+        const badgeGallery = document.getElementById('badgeGallery');
+        const closeBadgesBtn = document.getElementById('closeBadgesBtn');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const miniGameOverlay = document.getElementById('miniGameOverlay');
+        const closeGameBtn = document.getElementById('closeGameBtn');
+        const gameTitle = document.getElementById('gameTitle');
+        const gameArea = document.getElementById('gameArea');
+        const nextGameBtn = document.getElementById('nextGameBtn');
+
+        // Settings Elemente
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+
+        // Globale Variablen
+        let flashcards = []; 
+        let originalFlashcards = []; 
+        let currentCardIndex = 0; 
+        let isReviewMode = false; 
+        let learningMode = 'normal'; // 'normal', 'quiz', 'game'
+        let darkModeEnabled = true; 
+        let earnedBadges = []; 
+        let gameMode = ''; 
+        let currentGameCardSet = []; 
+        let memoryCards = []; 
+        let flippedMemoryCards = []; 
+        let matchedMemoryPairs = 0; 
+        let isMemoryChecking = false; 
+        let availableVoices = []; // Array für verfügbare Stimmen
+        let loadedQuestionLang = 'de-DE'; // Globale Variable für die geladene Frage-Sprache
+        let loadedAnswerLang = 'de-DE'; // Globale Variable für die geladene Antwort-Sprache
+
+
+        // Maskottchen Emojis
+        const MASCOT_HAPPY = '😊';
+        const MASCOT_NEUTRAL = '🙂';
+        const MASCOT_THINKING = '🤔';
+
+        // Abzeichen Definitionen
+        const BADGES = [
+            { id: 'first_card', name: 'Erste Schritte!', description: 'Die allererste Karte gelernt!', icon: '✨' },
+            { id: 'ten_correct', name: 'Zehn Power-Punkte!', description: '10 Karten richtig beantwortet!', icon: '🔥' },
+            { id: 'fifty_correct', name: 'Halbzeit-Held!', description: '50 Karten richtig gemeistert!', icon: '🌟' },
+            { id: 'hundred_correct', name: 'Lern-Legende!', description: '100 Karten richtig gewusst!', icon: '👑' },
+            { id: 'first_set', name: 'Satz-Bezwinger!', description: 'Den ersten Kartensatz komplett gelernt!', icon: '✅' },
+            { id: 'quiz_master', name: 'Quiz-König/in!', description: '10 Quizfragen korrekt gelöst!', icon: '🧠' },
+            { id: 'review_hero', name: 'Wiederholungs-Ass!', description: 'Alle Fehlerkarten einmal wiederholt!', icon: '🔄' },
+            { id: 'memory_pro', name: 'Memory-Meister!', description: 'Ein Memory-Spiel fehlerfrei beendet!', icon: '💡' }
+        ];
+
+        // Initialisierung beim Laden der Seite
+        document.addEventListener('DOMContentLoaded', initApp);
+
+        function initApp() {
+            loadStateFromLocalStorage(); 
+            updateDarkModeUI(); 
+            
+            // Fülle die flashcards basierend auf dem geladenen Zustand und Modus
+            if (isReviewMode) {
+                // Review-Modus basiert auf dem Normalmodus-Fortschritt
+                flashcards = originalFlashcards.filter(card => card.progress.normal === 'incorrect');
+                if (flashcards.length === 0) {
+                    isReviewMode = false; // Keine falschen Karten mehr, zurück zum normalen Lernmodus
+                    flashcards = [...originalFlashcards]; // Alle Karten für den Standardmodus laden
+                    shuffleFlashcards();
+                    currentCardIndex = 0;
+                    showMotivationalMessage('Wiederholungsmodus beendet, keine falschen Karten mehr!', MASCOT_HAPPY);
+                } else {
+                    shuffleFlashcards();
+                    // UI-Anpassungen für den Wiederholungsmodus
+                    normalModeBtn.textContent = 'Lernmodus verlassen';
+                    quizModeBtn.style.display = 'none';
+                    showBadgesBtn.style.display = 'none';
+                    startGameBtn.style.display = 'none';
+                }
+            } else {
+                flashcards = [...originalFlashcards]; // Alle Karten in den aktuellen Stapel laden
+                shuffleFlashcards();
+            }
+            
+            updateProgress();
+            updateCardCounter();
+
+            if (originalFlashcards.length > 0) {
+                appControls.style.display = 'block';
+                displayCard();
+            } else {
+                appControls.style.display = 'none';
+            }
+            setMascotState('neutral');
+
+            // Event-Listener für Sprachauswahländerungen hinzufügen, um Zustand zu speichern
+            questionLangSelect.addEventListener('change', saveStateToLocalStorage);
+            answerLangSelect.addEventListener('change', saveStateToLocalStorage);
+
+            // Stimmenliste beim Start und bei Änderungen laden
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.onvoiceschanged = populateVoiceList;
+                // Timeout, um sicherzustellen, dass Stimmen geladen sind, bevor populateVoiceList aufgerufen wird
+                // Manchmal sind Stimmen nicht sofort verfügbar
+                setTimeout(populateVoiceList, 100); 
+            } else {
+                questionLangSelect.innerHTML = '<option value="">Nicht unterstützt</option>';
+                answerLangSelect.innerHTML = '<option value="">Nicht unterstützt</option>';
+                questionLangSelect.disabled = true;
+                answerLangSelect.disabled = true;
+                playQuestionAudioBtn.disabled = true;
+                playAnswerAudioBtn.disabled = true;
+                showMotivationalMessage('Audio-Wiedergabe nicht verfügbar. Browser unterstützt keine Text-zu-Sprache.', MASCOT_THINKING);
+            }
+        }
+
+        // --- Dateiupload und Parsen ---
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                fileNameDisplay.textContent = `Ausgewählte Datei: ${file.name}`;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    parseFile(e.target.result);
+                    event.target.value = ''; 
+                };
+                reader.readAsText(file);
+            } else {
+                fileNameDisplay.textContent = 'Noch keine Datei ausgewählt.';
+            }
+        });
+
+        function parseFile(text) {
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            const parsedCards = lines.map(line => {
+                let topic = null;
+                let question;
+                let answer;
+
+                if (line.includes('|') && line.includes(':')) {
+                    // Fall 1: Thema|Frage : Antwort
+                    const parts = line.split('|');
+                    topic = parts[0].trim();
+                    const qa = parts.slice(1).join('|').split(':');
+                    question = qa[0].trim();
+                    answer = qa.slice(1).join(':').trim();
+                } else if (line.includes(':')) {
+                    // Fall 2: Frage : Antwort (ohne Thema)
+                    const parts = line.split(':');
+                    question = parts[0].trim();
+                    // Wenn es nur einen Teil gibt (z.B. "Frage:"), ist die Antwort leer
+                    answer = parts.length > 1 ? parts.slice(1).join(':').trim() : '';
+                } else {
+                    // Fall 3: Nur Frage (kein Doppelpunkt oder Thema)
+                    question = line.trim();
+                    answer = ''; // Änderung: Leerer String statt "Keine Antwort"
+                }
+                return { 
+                    question, 
+                    answer, 
+                    topic, 
+                    // Initialisiere Fortschritt für beide Modi
+                    progress: {
+                        normal: 'unanswered',
+                        quiz: 'unanswered'
+                    }
+                };
+            });
+
+            originalFlashcards = parsedCards;
+            flashcards = [...originalFlashcards];
+            shuffleFlashcards();
+            currentCardIndex = 0;
+            isReviewMode = false;
+            appControls.style.display = 'block';
+            displayCard();
+            updateProgress();
+            updateCardCounter();
+            saveStateToLocalStorage();
+        }
+
+        function shuffleFlashcards() {
+            for (let i = flashcards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [flashcards[i], flashcards[j]] = [flashcards[j], flashcards[i]];
+            }
+        }
+
+        // --- Kartendarstellung und Logik ---
+        flashcard.addEventListener('click', () => {
+            if (learningMode === 'normal') {
+                flashcard.classList.toggle('flipped');
+            }
+        });
+
+        function displayCard() {
+            if (flashcards.length === 0) {
+                flashcardText.innerHTML = 'Keine Karten verfügbar. Lade eine Datei hoch oder beende den Wiederholungsmodus!';
+                flashcardAnswer.innerHTML = '';
+                flashcardTopicFront.textContent = '';
+                flashcardTopicBack.textContent = '';
+                flashcard.classList.remove('flipped');
+                quizOptionsContainer.style.display = 'none';
+                correctBtn.style.display = 'none';
+                incorrectBtn.style.display = 'none';
+                nextCardBtn.style.display = 'none';
+                prevCardBtn.style.display = 'none';
+                playQuestionAudioBtn.style.display = 'none';
+                playAnswerAudioBtn.style.display = 'none';
+                reviewIncorrectBtn.style.display = (getIncorrectlyAnsweredCount(learningMode) > 0 && !isReviewMode) ? 'block' : 'none';
+                return;
+            }
+
+            if (currentCardIndex >= flashcards.length) {
+                if (isReviewMode) {
+                    showMotivationalMessage('Alle falsch beantworteten Karten wiederholt!', MASCOT_HAPPY);
+                    setLearningMode('normal'); // Verlässt den Review-Modus, geht zurück zu normal
+                    earnBadge('review_hero');
+                } else {
+                    flashcardText.innerHTML = 'Alle Karten bearbeitet!';
+                    flashcardAnswer.innerHTML = 'Gut gemacht!';
+                    flashcardTopicFront.textContent = '';
+                    flashcardTopicBack.textContent = '';
+                    flashcard.classList.remove('flipped');
+                    quizOptionsContainer.style.display = 'none';
+                    correctBtn.style.display = 'none';
+                    incorrectBtn.style.display = 'none';
+                    nextCardBtn.style.display = 'none';
+                    prevCardBtn.style.display = 'none';
+                    playQuestionAudioBtn.style.display = 'none'; 
+                    playAnswerAudioBtn.style.display = 'none';
+                    reviewIncorrectBtn.style.display = (getIncorrectlyAnsweredCount(learningMode) > 0) ? 'block' : 'none';
+                    if (originalFlashcards.length > 0 && 
+                        originalFlashcards.every(card => card.progress[learningMode] !== 'unanswered')) { // Prüfe, ob alle Karten im aktuellen Modus bearbeitet wurden
+                        earnBadge('first_set'); // Dieses Abzeichen kann jetzt auch modusspezifisch sein
+                    }
+                }
+                return;
+            }
+
+            correctBtn.style.display = 'inline-block';
+            incorrectBtn.style.display = 'inline-block';
+            nextCardBtn.style.display = 'inline-block';
+            prevCardBtn.style.display = 'inline-block';
+            playQuestionAudioBtn.style.display = 'block'; 
+            playAnswerAudioBtn.style.display = 'block';
+            reviewIncorrectBtn.style.display = 'none'; 
+
+            const currentCard = flashcards[currentCardIndex];
+            flashcardText.innerHTML = marked.parse(currentCard.question);
+            flashcardAnswer.innerHTML = marked.parse(currentCard.answer);
+            flashcardTopicFront.textContent = currentCard.topic ? `Thema: ${currentCard.topic}` : '';
+            flashcardTopicBack.textContent = currentCard.topic ? `Thema: ${currentCard.topic}` : '';
+            flashcard.classList.remove('flipped'); 
+
+            if (learningMode === 'quiz') {
+                displayQuizOptions(currentCard);
+            } else {
+                quizOptionsContainer.style.display = 'none';
+            }
+        }
+
+        // --- Audio-Feedback Funktionen ---
+        // Funktion zum Füllen der Stimmen-Dropdowns
+        function populateVoiceList() {
+            availableVoices = window.speechSynthesis.getVoices();
+            const langSelectors = [questionLangSelect, answerLangSelect];
+            
+            // Lade die zuletzt gespeicherten Sprachcodes aus den globalen Variablen
+            const targetQuestionLang = loadedQuestionLang; 
+            const targetAnswerLang = loadedAnswerLang;
+
+            langSelectors.forEach(selectElement => {
+                selectElement.innerHTML = ''; // Vorhandene Optionen entfernen
+
+                // Standardoption "Auto" oder "System-Standard" hinzufügen
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Auto (System-Standard)';
+                selectElement.appendChild(defaultOption);
+
+                const addedLanguages = new Set(); // Um Duplikate zu vermeiden
+
+                availableVoices.forEach(voice => {
+                    if (!addedLanguages.has(voice.lang)) {
+                        const option = document.createElement('option');
+                        option.value = voice.lang;
+                        option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' (Standard)' : ''}`;
+                        selectElement.appendChild(option);
+                        addedLanguages.add(voice.lang);
+                    }
+                });
+
+                let selectedValue = (selectElement === questionLangSelect) ? targetQuestionLang : targetAnswerLang;
+                
+                if (availableVoices.some(v => v.lang === selectedValue)) {
+                    selectElement.value = selectedValue;
+                } else if (availableVoices.some(v => v.lang === navigator.language)) { 
+                    selectElement.value = navigator.language;
+                } else if (availableVoices.some(v => v.default)) { 
+                    selectElement.value = availableVoices.find(v => v.default).lang;
+                } else if (availableVoices.length > 0) { 
+                    selectElement.value = availableVoices[0].lang;
+                } else {
+                    selectElement.value = ''; 
+                }
+            });
+
+            // Status der Buttons und Dropdowns basierend auf Verfügbarkeit der Stimmen
+            if (availableVoices.length === 0) {
+                questionLangSelect.innerHTML = '<option value="">Keine Stimmen verfügbar</option>';
+                answerLangSelect.innerHTML = '<option value="">Keine Stimmen verfügbar</option>';
+                questionLangSelect.disabled = true;
+                answerLangSelect.disabled = true;
+                playQuestionAudioBtn.disabled = true;
+                playAnswerAudioBtn.disabled = true;
+            } else {
+                questionLangSelect.disabled = false;
+                answerLangSelect.disabled = false;
+                playQuestionAudioBtn.disabled = false;
+                playAnswerAudioBtn.disabled = false;
+            }
+        }
+
+
+        playQuestionAudioBtn.addEventListener('click', (event) => {
+            event.stopPropagation(); 
+            if (flashcards.length > 0) {
+                const currentCard = flashcards[currentCardIndex];
+                const selectedLang = questionLangSelect.value || navigator.language || 'de-DE'; // Fallback
+                speakText(currentCard.question, selectedLang);
+            }
+        });
+
+        playAnswerAudioBtn.addEventListener('click', (event) => {
+            event.stopPropagation(); 
+            if (flashcards.length > 0) {
+                const currentCard = flashcards[currentCardIndex];
+                const selectedLang = answerLangSelect.value || navigator.language || 'de-DE'; // Fallback
+                speakText(currentCard.answer, selectedLang);
+            }
+        });
+
+        function speakText(text, lang = 'de-DE') {
+            if (!('speechSynthesis' in window) || window.speechSynthesis.getVoices().length === 0) {
+                console.warn("Text-to-Speech wird von diesem Browser nicht unterstützt oder Stimmen sind noch nicht geladen.");
+                showMotivationalMessage('Audio-Wiedergabe nicht verfügbar.', MASCOT_THINKING);
+                return;
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang; // Sprache setzen
+
+            // Versuche, eine spezifische Stimme für die ausgewählte Sprache zu finden
+            const voiceToUse = availableVoices.find(voice => voice.lang === lang);
+            if (voiceToUse) {
+                utterance.voice = voiceToUse;
+            } else {
+                // Fallback: Wenn keine spezifische Stimme für die exakte lang (z.B. 'en-US')
+                // gefunden wurde, versuche, eine Stimme mit der Basissprache (z.B. 'en') zu finden.
+                const baseLang = lang.split('-')[0];
+                const fallbackVoice = availableVoices.find(voice => voice.lang.startsWith(baseLang));
+                if (fallbackVoice) {
+                    utterance.voice = fallbackVoice;
+                } else {
+                    console.warn(`Keine spezifische Stimme für "${lang}" gefunden, verwende Browser-Standard.`);
+                }
+            }
+
+            window.speechSynthesis.cancel(); 
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- Hilfsfunktionen zur Fortschrittsberechnung ---
+        // Akzeptiert jetzt den Modus als Argument
+        function getCorrectlyAnsweredCount(mode) {
+            return originalFlashcards.filter(card => card.progress[mode] === 'correct').length;
+        }
+
+        function getIncorrectlyAnsweredCount(mode) {
+            return originalFlashcards.filter(card => card.progress[mode] === 'incorrect').length;
+        }
+
+        function getProcessedCardsCount(mode) {
+            return originalFlashcards.filter(card => card.progress[mode] === 'correct' || card.progress[mode] === 'incorrect').length;
+        }
+
+        // --- Quiz-Modus Optionen ---
+        function displayQuizOptions(currentCard) {
+            quizOptionsContainer.innerHTML = '';
+            quizOptionsContainer.style.display = 'grid';
+
+            const options = [];
+            options.push(currentCard.answer);
+
+            let incorrectOptions = [];
+            const allOtherAnswers = originalFlashcards
+                .map(card => card.answer)
+                .filter(answer => answer !== currentCard.answer && answer.trim() !== ''); 
+            
+            shuffleArray(allOtherAnswers);
+
+            for (let i = 0; i < allOtherAnswers.length && incorrectOptions.length < 3; i++) {
+                if (!incorrectOptions.includes(allOtherAnswers[i])) {
+                    incorrectOptions.push(allOtherAnswers[i]);
+                }
+            }
+            
+            let placeholderCounter = 1;
+            while (incorrectOptions.length < 3) {
+                let placeholder = `Platzhalter-Antwort ${placeholderCounter}`;
+                if (!options.includes(placeholder) && !incorrectOptions.includes(placeholder) && placeholder !== currentCard.answer) {
+                    incorrectOptions.push(placeholder);
+                    placeholderCounter++;
+                } else {
+                    placeholderCounter++;
+                }
+            }
+
+            options.push(...incorrectOptions);
+            shuffleArray(options);
+
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option; 
+                button.addEventListener('click', () => handleQuizAnswer(button, option === currentCard.answer));
+                quizOptionsContainer.appendChild(button);
+            });
+        }
+
+        function handleQuizAnswer(clickedButton, isCorrect) {
+            Array.from(quizOptionsContainer.children).forEach(button => {
+                button.disabled = true;
+                if (button.textContent === flashcards[currentCardIndex].answer) {
+                    button.classList.add('correct');
+                }
+                if (button === clickedButton && !isCorrect) {
+                    button.classList.add('incorrect');
+                }
+            });
+
+            setTimeout(() => {
+                if (isCorrect) {
+                    handleCorrect();
+                } else {
+                    handleIncorrect();
+                }
+            }, 1000);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // --- Gamification ---
+        correctBtn.addEventListener('click', handleCorrect);
+        incorrectBtn.addEventListener('click', handleIncorrect);
+
+        function handleCorrect() {
+            if (flashcards.length === 0 || currentCardIndex >= flashcards.length) return;
+            const currentCard = flashcards[currentCardIndex];
+            // Finde die Originalkarte, um ihren Status zu aktualisieren
+            const originalCard = originalFlashcards.find(card => 
+                card.question === currentCard.question && card.answer === currentCard.answer);
+            
+            if (originalCard) {
+                originalCard.progress[learningMode] = 'correct'; // Aktualisiere den Status für den aktuellen Modus
+            }
+            showMotivationalMessageBasedOnCount(true); 
+            earnBadgeByCriteria();
+            moveToNextCard();
+        }
+
+        function handleIncorrect() {
+            if (flashcards.length === 0 || currentCardIndex >= flashcards.length) return;
+            const currentCard = flashcards[currentCardIndex];
+            // Finde die Originalkarte, um ihren Status zu aktualisieren
+            const originalCard = originalFlashcards.find(card => 
+                card.question === currentCard.question && card.answer === currentCard.answer);
+            
+            if (originalCard) {
+                originalCard.progress[learningMode] = 'incorrect'; // Aktualisiere den Status für den aktuellen Modus
+            }
+            showMotivationalMessageBasedOnCount(false); 
+            earnBadgeByCriteria(); 
+            moveToNextCard();
+        }
+
+        function showMotivationalMessageBasedOnCount(isCorrect) {
+            const processedCount = getProcessedCardsCount(learningMode); // Nutze den aktuellen Modus
+            if (isCorrect) {
+                setMascotState('happy'); 
+                if (processedCount > 0 && processedCount % 10 === 0) {
+                    const messages = [
+                        'Super, weiter so!',
+                        'Du rockst das!',
+                        'Fantastisch gelernt!',
+                        'Mach weiter so, bald hast du es geschafft!',
+                        'Beeindruckend!'
+                    ];
+                    const randomIndex = Math.floor(Math.random() * messages.length);
+                    showMotivationalMessage(messages[randomIndex], MASCOT_HAPPY);
+                }
+            } else {
+                setMascotState('thinking');
+            }
+        }
+
+        function showMotivationalMessage(message, mascotStateForMessage = null) {
+            motivationMessage.textContent = message;
+            motivationMessage.style.display = 'block';
+            motivationMessage.classList.remove('fadeInOut');
+            void motivationMessage.offsetWidth; 
+            motivationMessage.classList.add('fadeInOut');
+            
+            if (mascotStateForMessage) {
+                mascotEmoji.textContent = mascotStateForMessage; 
+                mascotContainer.classList.remove('correct-animation', 'incorrect-animation');
+                void mascotContainer.offsetWidth; 
+                mascotContainer.classList.add(mascotStateForMessage === MASCOT_HAPPY ? 'correct-animation' : 'incorrect-animation');
+            }
+            clearTimeout(motivationMessage.timerId); 
+            motivationMessage.timerId = setTimeout(() => {
+                setMascotState('neutral');
+            }, 1000); 
+        }
+
+        function setMascotState(state) {
+            mascotContainer.classList.remove('correct-animation', 'incorrect-animation');
+            switch(state) {
+                case 'happy':
+                    mascotEmoji.textContent = MASCOT_HAPPY;
+                    break;
+                case 'thinking':
+                    mascotEmoji.textContent = MASCOT_THINKING;
+                    break;
+                case 'neutral':
+                default:
+                    mascotEmoji.textContent = MASCOT_NEUTRAL;
+            }
+        }
+
+        // --- Abzeichen-Logik ---
+        function earnBadge(badgeId) {
+            if (!earnedBadges.includes(badgeId)) {
+                earnedBadges.push(badgeId);
+                saveStateToLocalStorage();
+                const badge = BADGES.find(b => b.id === badgeId);
+                if (badge) {
+                    showMotivationalMessage(`Neues Abzeichen: "${badge.name}"! ${badge.icon}`, MASCOT_HAPPY);
+                }
+            }
+        }
+
+        function earnBadgeByCriteria() {
+            const processedCount = getProcessedCardsCount(learningMode); // Nutze den aktuellen Modus
+            const correctlyAnsweredTotal = getCorrectlyAnsweredCount(learningMode); // Nutze den aktuellen Modus
+            const totalCardsInSet = originalFlashcards.length;
+
+            if (processedCount >= 1) { 
+                earnBadge('first_card');
+            }
+            if (correctlyAnsweredTotal >= 10) {
+                 earnBadge('ten_correct');
+            }
+            if (correctlyAnsweredTotal >= 50) {
+                 earnBadge('fifty_correct');
+            }
+            if (correctlyAnsweredTotal >= 100) {
+                 earnBadge('hundred_correct');
+            }
+            // 'first_set' Abzeichen ist jetzt modusspezifisch
+            if (totalCardsInSet > 0 && processedCount === totalCardsInSet && learningMode !== 'game') { 
+                // Das Abzeichen soll nur verdient werden, wenn alle Karten im aktuellen Lernmodus bearbeitet wurden
+                // und nicht im Spielmodus (da Spiele oft nur einen Teilsatz verwenden).
+                earnBadge('first_set');
+            }
+        }
+
+        showBadgesBtn.addEventListener('click', displayBadges);
+        closeBadgesBtn.addEventListener('click', () => badgeGalleryOverlay.style.display = 'none');
+
+        function displayBadges() {
+            badgeGallery.innerHTML = '';
+            BADGES.forEach(badgeDef => {
+                const badgeItem = document.createElement('div');
+                badgeItem.classList.add('badge-item');
+                if (earnedBadges.includes(badgeDef.id)) {
+                    badgeItem.classList.add('earned');
+                }
+                badgeItem.innerHTML = `
+                    <span class="badge-icon">${badgeDef.icon}</span>
+                    <span>${badgeDef.name}</span>
+                    <small>${badgeDef.description}</small>
+                `;
+                badgeGallery.appendChild(badgeItem);
+            });
+            badgeGalleryOverlay.style.display = 'flex';
+        }
+
+
+        // --- Navigation ---
+        nextCardBtn.addEventListener('click', () => {
+            moveToNextCard();
+        });
+
+        prevCardBtn.addEventListener('click', () => {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                displayCard();
+                updateProgress();
+                updateCardCounter();
+                saveStateToLocalStorage();
+            }
+        });
+
+        function moveToNextCard() {
+            currentCardIndex++;
+            displayCard();
+            updateProgress();
+            updateCardCounter();
+            saveStateToLocalStorage();
+        }
+
+        // --- Lernmodi ---
+        normalModeBtn.addEventListener('click', () => setLearningMode('normal'));
+        quizModeBtn.addEventListener('click', () => setLearningMode('quiz'));
+        startGameBtn.addEventListener('click', () => {
+            const games = ['memory'];
+            const randomGame = games[Math.floor(Math.random() * games.length)];
+            setLearningMode('game', randomGame);
+        });
+
+        function setLearningMode(mode, gameType = '') {
+            // Wenn der Wiederholungsmodus aktiv war, beende ihn und setze auf normalen Zustand zurück
+            if (isReviewMode) {
+                isReviewMode = false;
+                normalModeBtn.textContent = 'Normalmodus';
+                quizModeBtn.style.display = 'inline-block'; // Zeige Quiz-Button wieder
+                showBadgesBtn.style.display = 'inline-block'; // Zeige Abzeichen-Button wieder
+                startGameBtn.style.display = 'inline-block'; // Zeige Spiel-Button wieder
+            }
+
+            // Wenn der Modus gewechselt wird (Normal <-> Quiz), lade die Karten neu
+            // und setze den Index zurück. Der Game-Modus wird separat behandelt.
+            if ((learningMode === 'normal' && mode === 'quiz') || 
+                (learningMode === 'quiz' && mode === 'normal')) {
+                flashcards = [...originalFlashcards]; // Laden aller Karten für den neuen Modus
+                shuffleFlashcards();
+                currentCardIndex = 0; 
+            }
+            // Wenn wir vom Spielmodus in einen Lernmodus wechseln
+            if (learningMode === 'game' && (mode === 'normal' || mode === 'quiz')) {
+                 flashcards = [...originalFlashcards]; // Laden aller Karten
+                 shuffleFlashcards();
+                 currentCardIndex = 0;
+            }
+
+            learningMode = mode;
+            gameMode = gameType; 
+
+            // Aktiviere den richtigen Modus-Button in der UI
+            document.querySelectorAll('.mode-selection button').forEach(btn => btn.classList.remove('active'));
+            const currentModeBtn = document.getElementById(`${mode}ModeBtn`);
+            if (currentModeBtn) {
+                currentModeBtn.classList.add('active');
+            }
+
+            if (learningMode === 'game') {
+                appControls.style.display = 'none'; 
+                miniGameOverlay.style.display = 'flex';
+                startGame(gameMode);
+            } else {
+                miniGameOverlay.style.display = 'none';
+                appControls.style.display = 'block'; 
+                displayCard(); 
+                updateProgress(); // Fortschritt für den neuen Modus aktualisieren
+                updateCardCounter(); // Zähler für den neuen Modus aktualisieren
+            }
+            saveStateToLocalStorage();
+        }
+
+        // --- Fortschritt & Wiederholung ---
+        function updateProgress() {
+            if (originalFlashcards.length === 0) {
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+                cardCounterDisplay.textContent = `Bearbeitete Karten: 0 | Richtig: 0 | Falsch: 0`;
+                reviewIncorrectBtn.style.display = 'none';
+                return;
+            }
+            // Nutze den aktuellen Lernmodus für die Fortschrittsberechnung
+            const processedCount = getProcessedCardsCount(isReviewMode ? 'normal' : learningMode);
+            const correctlyAnsweredCount = getCorrectlyAnsweredCount(isReviewMode ? 'normal' : learningMode);
+            const incorrectlyAnsweredCount = getIncorrectlyAnsweredCount(isReviewMode ? 'normal' : learningMode);
+            const totalCards = originalFlashcards.length;
+
+            const progress = (processedCount / totalCards) * 100;
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `${Math.round(progress)}%`;
+
+            const correctProgress = (correctlyAnsweredCount / totalCards) * 100;
+            progressBar.style.backgroundImage = `linear-gradient(to right, var(--correct-light) ${correctProgress}%, var(--primary-light) ${correctProgress}%)`;
+            
+            // Zeige den Wiederholungsbutton nur, wenn im Normalmodus falsche Karten vorhanden sind und wir nicht bereits im Review-Modus sind
+            if (getIncorrectlyAnsweredCount('normal') > 0 && !isReviewMode && learningMode === 'normal') {
+                reviewIncorrectBtn.style.display = 'block';
+            } else {
+                reviewIncorrectBtn.style.display = 'none';
+            }
+        }
+
+        function updateCardCounter() {
+            // Nutze den aktuellen Lernmodus für die Zähler
+            const processed = getProcessedCardsCount(isReviewMode ? 'normal' : learningMode);
+            const correct = getCorrectlyAnsweredCount(isReviewMode ? 'normal' : learningMode);
+            const incorrect = getIncorrectlyAnsweredCount(isReviewMode ? 'normal' : learningMode);
+            cardCounterDisplay.textContent = `Bearbeitete Karten: ${processed} | Richtig: ${correct} | Falsch: ${incorrect}`;
+        }
+
+        reviewIncorrectBtn.addEventListener('click', startReviewMode);
+        resetProgressBtn.addEventListener('click', resetProgress);
+
+        function startReviewMode() {
+            // Review-Modus bezieht sich immer auf Fehler im NORMALEN Lernmodus
+            const reviewCards = originalFlashcards.filter(card => card.progress.normal === 'incorrect');
+            if (reviewCards.length === 0) {
+                showMotivationalMessage('Keine falsch beantworteten Karten zum Wiederholen im Normalmodus!', MASCOT_NEUTRAL);
+                return;
+            }
+            isReviewMode = true;
+            flashcards = [...reviewCards]; // Nur die falschen Karten für diese Session
+            shuffleFlashcards();
+            currentCardIndex = 0;
+            
+            reviewIncorrectBtn.style.display = 'none';
+            // UI-Anpassungen, da wir in einem speziellen Modus sind
+            normalModeBtn.textContent = 'Lernmodus verlassen';
+            quizModeBtn.style.display = 'none';
+            showBadgesBtn.style.display = 'none'; 
+            startGameBtn.style.display = 'none'; 
+            
+            showMotivationalMessage('Wiederholungsmodus gestartet!', MASCOT_NEUTRAL);
+            displayCard();
+            updateProgress(); // Aktualisiere Fortschrittsanzeige für Review-Modus
+            updateCardCounter(); // Aktualisiere Zähler für Review-Modus
+            saveStateToLocalStorage();
+        }
+
+        function resetProgress() {
+            const confirmed = true; // In einer echten App: window.confirm("Möchtest du den gesamten Fortschritt zurücksetzen?");
+            if (confirmed) {
+                // Setze den Fortschritt für ALLE Modi und alle Karten zurück
+                originalFlashcards.forEach(card => {
+                    card.progress.normal = 'unanswered';
+                    card.progress.quiz = 'unanswered';
+                });
+                flashcards = [...originalFlashcards]; // Alle Karten wieder in den Stapel
+                shuffleFlashcards();
+                currentCardIndex = 0;
+                isReviewMode = false;
+                earnedBadges = []; // Abzeichen zurücksetzen
+                
+                // UI-Elemente auf den Standardzustand zurücksetzen
+                normalModeBtn.textContent = 'Normalmodus';
+                normalModeBtn.classList.add('active'); 
+                quizModeBtn.style.display = 'inline-block';
+                showBadgesBtn.style.display = 'inline-block'; 
+                startGameBtn.style.display = 'inline-block'; 
+                learningMode = 'normal'; // Setze den Lernmodus auf Normal
+                document.querySelectorAll('.mode-selection button').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`${learningMode}ModeBtn`).classList.add('active');
+
+
+                displayCard();
+                updateProgress();
+                updateCardCounter();
+                saveStateToLocalStorage();
+                showMotivationalMessage('Fortschritt zurückgesetzt!', MASCOT_NEUTRAL);
+                correctBtn.style.display = 'inline-block';
+                incorrectBtn.style.display = 'inline-block';
+                nextCardBtn.style.display = 'inline-block';
+                prevCardBtn.style.display = 'inline-block';
+                reviewIncorrectBtn.style.display = 'none'; // Sollte nach Reset sowieso nicht sichtbar sein
+            }
+        }
+
+        // --- LocalStorage ---
+        function saveStateToLocalStorage() {
+            localStorage.setItem('flashcardAppState', JSON.stringify({
+                originalFlashcards: originalFlashcards,
+                currentCardIndex,
+                isReviewMode,
+                learningMode,
+                darkModeEnabled,
+                earnedBadges, 
+                questionLang: questionLangSelect.value, 
+                answerLang: answerLangSelect.value 
+            }));
+        }
+
+        function loadStateFromLocalStorage() {
+            const savedState = localStorage.getItem('flashcardAppState');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                originalFlashcards = state.originalFlashcards || [];
+                // Stelle sicher, dass alte Karten, die keine 'progress'-Eigenschaft haben, diese bekommen
+                originalFlashcards.forEach(card => {
+                    if (!card.progress) {
+                        card.progress = {
+                            normal: card.status || 'unanswered', // Migriere alte 'status' zu 'normal'
+                            quiz: 'unanswered'
+                        };
+                        delete card.status; // Entferne die alte Eigenschaft, falls vorhanden
+                    }
+                    // Stelle sicher, dass auch die 'quiz'-Eigenschaft immer gesetzt ist
+                    if (!card.progress.quiz) {
+                        card.progress.quiz = 'unanswered';
+                    }
+                });
+
+
+                currentCardIndex = state.currentCardIndex || 0;
+                isReviewMode = state.isReviewMode || false;
+                learningMode = state.learningMode || 'normal';
+                darkModeEnabled = state.darkModeEnabled !== undefined ? state.darkModeEnabled : true;
+                earnedBadges = state.earnedBadges || []; 
+                
+                // Setze die globalen Variablen für die geladenen Sprachpräferenzen
+                loadedQuestionLang = state.questionLang || 'de-DE';
+                loadedAnswerLang = state.answerLang || 'de-DE';
+
+                document.querySelectorAll('.mode-selection button').forEach(btn => btn.classList.remove('active'));
+                const currentModeBtn = document.getElementById(`${learningMode}ModeBtn`);
+                if (currentModeBtn) {
+                    currentModeBtn.classList.add('active');
+                }
+
+                if (originalFlashcards.length > 0) {
+                    fileNameDisplay.textContent = 'Lerninhalte aus dem letzten Besuch geladen.';
+                }
+            }
+        }
+
+        // --- Dark Mode ---
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+
+        function toggleDarkMode() {
+            darkModeEnabled = !darkModeEnabled;
+            updateDarkModeUI();
+            saveStateToLocalStorage();
+        }
+
+        function updateDarkModeUI() {
+            if (darkModeEnabled) {
+                document.documentElement.classList.add('dark-mode');
+                darkModeToggle.textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+                darkModeToggle.textContent = '💡';
+            }
+        }
+
+        // --- Settings Overlay Logic ---
+        settingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'flex';
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+        });
+
+
+        // --- Mini-Spiel Logik ---
+        closeGameBtn.addEventListener('click', () => {
+            miniGameOverlay.style.display = 'none';
+            setLearningMode('normal'); 
+            gameArea.innerHTML = ''; 
+        });
+        nextGameBtn.addEventListener('click', () => {
+            const games = ['memory'];
+            const randomGame = games[Math.floor(Math.random() * games.length)];
+            startGame(randomGame);
+        });
+
+        function startGame(type) {
+            if (originalFlashcards.length < 2) {
+                showMotivationalMessage('Lade mindestens 2 Karten hoch, um ein Mini-Spiel zu starten!', MASCOT_THINKING);
+                miniGameOverlay.style.display = 'none';
+                setLearningMode('normal');
+                return;
+            }
+            // Memory benötigt mindestens 2 Paare, also 4 unique Antworten
+            if (type === 'memory' && originalFlashcards.filter(card => card.answer.trim() !== '').length < 4) {
+                showMotivationalMessage('Du brauchst mindestens 4 einzigartige Antworten für das Memory-Spiel (2 Paare)!', MASCOT_THINKING);
+                miniGameOverlay.style.display = 'none';
+                setLearningMode('normal');
+                return;
+            }
+
+            gameArea.innerHTML = ''; 
+            nextGameBtn.style.display = 'none'; 
+
+            if (type === 'memory') {
+                gameTitle.textContent = 'Paare finden (Memory)';
+                initMemoryGame();
+            } 
+        }
+        
+        // Memory Game
+        function initMemoryGame() {
+            const uniqueCards = [];
+            const seenAnswers = new Set();
+            for (const card of originalFlashcards) {
+                // Füge nur Karten hinzu, die eine nicht-leere Antwort haben und deren Antwort noch nicht verwendet wurde
+                if (card.answer.trim() !== '' && !seenAnswers.has(card.answer.trim().toLowerCase())) {
+                    uniqueCards.push(card);
+                    seenAnswers.add(card.answer.trim().toLowerCase());
+                }
+            }
+
+            shuffleArray(uniqueCards);
+            // Wähle maximal 4 unique Karten für das Spiel (ergibt 4 Paare = 8 Karten), mindestens aber 2 Paare
+            currentGameCardSet = uniqueCards.slice(0, Math.min(4, Math.floor(uniqueCards.length / 2) * 2)); // Sicherstellen, dass es immer eine gerade Anzahl für Paare ist
+            
+            if (currentGameCardSet.length < 2) { // Mindestens 2 unique Karten (für ein Paar)
+                showMotivationalMessage('Nicht genug unterschiedliche Karten für Memory (mind. 2 Paare benötigt)!', MASCOT_THINKING);
+                miniGameOverlay.style.display = 'none';
+                setLearningMode('normal');
+                return;
+            }
+
+            memoryCards = [];
+            currentGameCardSet.forEach((card, index) => {
+                memoryCards.push({ id: `card-${index}-q`, type: 'question', content: card.question, pairId: index, flipped: false, matched: false });
+                memoryCards.push({ id: `card-${index}-a`, type: 'answer', content: card.answer, pairId: index, flipped: false, matched: false });
+            });
+            shuffleArray(memoryCards);
+
+            matchedMemoryPairs = 0;
+            flippedMemoryCards = [];
+            isMemoryChecking = false; 
+
+            renderMemoryBoard();
+        }
+
+        function renderMemoryBoard() {
+            gameArea.innerHTML = '<div id="memoryBoard"></div>';
+            const board = document.getElementById('memoryBoard');
+            board.innerHTML = ''; 
+
+            // Bestimme die Spaltenanzahl basierend auf der Anzahl der Karten
+            let columns = 4; // Standard für 8 Karten
+            if (memoryCards.length <= 6) { // Für 2 oder 3 Paare (4 oder 6 Karten)
+                columns = 3;
+            } else if (memoryCards.length <= 4) { // Für 2 Paare (4 Karten)
+                columns = 2;
+            }
+            board.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
+            memoryCards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('memory-card');
+                cardElement.id = card.id;
+                
+                // Eine Karte ist "geflippt", wenn sie entweder aktuell aufgedeckt ist ODER wenn sie gematcht wurde
+                if (card.flipped || card.matched) { 
+                    cardElement.classList.add('flipped');
+                }
+                if (card.matched) {
+                    cardElement.classList.add('matched');
+                }
+
+                // Verwende die neuen Face-Klassen
+                cardElement.innerHTML = `
+                    <div class="memory-card-face memory-card-front-face">?</div>
+                    <div class="memory-card-face memory-card-back-face">${marked.parse(card.content)}</div>
+                `;
+                if (!card.matched) { // Nur klickbar machen, wenn nicht gematcht
+                    // Bestehende Event Listener entfernen, um Duplikate zu vermeiden,
+                    // falls renderMemoryBoard mehrfach für eine nicht-gematchte Karte aufgerufen wird.
+                    // Dafür muss die Funktion referenzierbar sein, daher umgestellt.
+                    const clickHandler = (e) => flipMemoryCard(card.id);
+                    cardElement.removeEventListener('click', clickHandler); // Sicherstellen, dass keine alten Listener hängen
+                    cardElement.addEventListener('click', clickHandler); // Neuen Listener hinzufügen
+                } else {
+                    // Wenn die Karte gematcht ist, sicherstellen, dass KEIN click listener aktiv ist.
+                    // Auch hier ist eine benannte Funktion wichtig, um sie korrekt entfernen zu können.
+                    const clickHandler = (e) => flipMemoryCard(card.id); // Muss dieselbe Referenz sein wie beim Hinzufügen
+                    cardElement.removeEventListener('click', clickHandler); 
+                }
+                board.appendChild(cardElement);
+            });
+        }
+
+        function flipMemoryCard(cardId) {
+            if (isMemoryChecking) return; // Klicks ignorieren, während Überprüfung läuft
+
+            const cardElement = document.getElementById(cardId);
+            const card = memoryCards.find(c => c.id === cardId);
+
+            if (!card || card.flipped || card.matched) {
+                return; // Karte existiert nicht, ist schon umgedreht oder gematcht
+            }
+
+            // Karte aufdecken (im Datenmodell und im DOM)
+            card.flipped = true;
+            cardElement.classList.add('flipped');
+            flippedMemoryCards.push(card);
+
+            // Wenn zwei Karten aufgedeckt sind, sofort überprüfen
+            if (flippedMemoryCards.length === 2) {
+                isMemoryChecking = true; // Sperre weitere Klicks
+                checkForMatch(); 
+            }
+        }
+
+        function checkForMatch() {
+            const [card1, card2] = flippedMemoryCards;
+
+            if (card1.pairId === card2.pairId) {
+                // Paar gefunden
+                card1.matched = true;
+                card2.matched = true;
+                
+                // Aktualisiere das DOM, um den "matched"-Zustand sichtbar zu machen
+                // Die Klassen 'flipped' und 'matched' stellen sicher, dass die Karte umgedreht bleibt
+                // und die Stile für gematchte Karten angewendet werden.
+                document.getElementById(card1.id).classList.add('flipped', 'matched');
+                document.getElementById(card2.id).classList.add('flipped', 'matched');
+                
+                // Da `pointer-events: none;` im CSS für `.memory-card.matched` gesetzt ist,
+                // sind die Karten automatisch nicht mehr klickbar.
+                
+                matchedMemoryPairs++;
+                showMotivationalMessage('Paar gefunden!', MASCOT_HAPPY);
+                
+                flippedMemoryCards = []; // Liste der umgedrehten Karten zurücksetzen
+                isMemoryChecking = false; // Klicks wieder erlauben
+
+                if (matchedMemoryPairs * 2 === memoryCards.length) { // Alle Paare gefunden
+                    showMotivationalMessage('Alle Paare gefunden! Super!', MASCOT_HAPPY); 
+                    earnBadge('memory_pro');
+                    nextGameBtn.style.display = 'block';
+                }
+                // NEU: Rufe renderMemoryBoard auf, um den Zustand des Spielfelds nach einem Match zu aktualisieren
+                // Dies stellt sicher, dass alle Karten korrekt neu gerendert werden, insbesondere die gematchten.
+                renderMemoryBoard(); 
+
+            } else {
+                // Kein Match, Karten nach kurzer Verzögerung wieder umdrehen
+                showMotivationalMessage('Kein Paar. Versuch es nochmal!', MASCOT_THINKING);
+                setTimeout(() => {
+                    document.getElementById(card1.id).classList.remove('flipped');
+                    document.getElementById(card2.id).classList.remove('flipped');
+                    card1.flipped = false; // Setze flipped im Datenmodell zurück
+                    card2.flipped = false;
+                    flippedMemoryCards = []; // Liste der umgedrehten Karten zurücksetzen
+                    isMemoryChecking = false; // Klicks wieder erlauben
+                    // Nach dem Zurückdrehen der Karten, um den sichtbaren Zustand zu aktualisieren.
+                    renderMemoryBoard(); 
+                }, 2000); // 2 Sekunden Verzögerung für das Zurückdrehen
+            }
+        }
+
+    </script>
+</body>
+</html>
